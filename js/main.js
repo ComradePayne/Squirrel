@@ -16,37 +16,166 @@ window.onload = function() {
     var game = new Phaser.Game( 800, 600, Phaser.AUTO, 'game', { preload: preload, create: create, update: update } );
     
     function preload() {
-        // Load an image and call it 'logo'.
-        game.load.image( 'logo', 'assets/phaser.png' );
+        //Load tilemap
+        game.load.tilemap('map', 'assets/sprites/squirrelMap.json', null, Phaser.Tilemap.TILED_JSON);
+
+        
+        
+        //Loading images/sprites.
+        game.load.image( 'tileset', 'assets/sprites/squirrelTileset.png' );
+        game.load.spritesheet( 'squirrel', 'assets/sprites/squirrel32x32.png', 32,32 );
+       
+        game.load.image('treeSprite', 'assets/sprites/tree32x32.png');
+        game.load.image('snowyTreeSprite', 'assets/sprites/snowytree32x32.png');
+        game.load.image('acornSprite', 'assets/sprites/acorn32x32.png');
+
+        
+        //Music loading
+        
+        game.load.audio('music', 'assets/music/Folk-Round.mp3');
+        //SFX loading
+        game.load.audio('cheep', 'assets/SFX/angrySquirrel.wav');
+
     }
+    //Map and tileset
+    var map;
+    var tileset;
     
-    var bouncy;
+    //Layer/object variables
+    var grassLayer;
+    var snowyGrassLayer;
     
+    var trees;
+    var snowyTrees;
+    var acorns;
+    var spawn;
+    var exit;
+    
+    //Squirrel, the Player
+    var squirrel;
+    
+    //Music
+    var music;
+    //SFX
+    var cheep;
+    
+    //Controls
+    var cursors;
+    
+
     function create() {
-        // Create a sprite at the center of the screen using the 'logo' image.
-        bouncy = game.add.sprite( game.world.centerX, game.world.centerY, 'logo' );
-        // Anchor the sprite at its center, as opposed to its top-left corner.
-        // so it will be truly centered.
-        bouncy.anchor.setTo( 0.5, 0.5 );
         
-        // Turn on the arcade physics engine for this sprite.
-        game.physics.enable( bouncy, Phaser.Physics.ARCADE );
-        // Make it bounce off of the world bounds.
-        bouncy.body.collideWorldBounds = true;
+        //Physics!
+        game.physics.startSystem(Phaser.Physics.ARCADE);
         
-        // Add some text using a CSS style.
-        // Center it in X, and position its top 15 pixels from the top of the world.
-        var style = { font: "25px Verdana", fill: "#9999ff", align: "center" };
-        var text = game.add.text( game.world.centerX, 15, "Build something awesome.", style );
-        text.anchor.setTo( 0.5, 0.0 );
+     
+        
+        //Initialize the game map. 
+        map = game.add.tilemap('map');
+        map.addTilesetImage('SquirrelTileset', 'tileset');
+        
+        //Layers! Non objective.
+        grassLayer = map.createLayer('Grass');
+        snowyGrassLayer = map.createLayer('SnowyGrass');
+        
+        
+        //Collision!
+//        map.setCollisionBetween(1,4000,true,'treeLayer');
+//        map.setCollisionBetween(1,4000,true,'snowyTreeLayer');
+//        
+        //resizes the game world to match the layer dimensions
+        grassLayer.resizeWorld();
+        snowyGrassLayer.resizeWorld();
+
+        //Create the objects from the objects layers.
+        createTrees();
+        createSnowyTrees();
+        createAcorns();
+        
+        //Squirrel Setup
+        //create player
+        var result = findObjectsByType('spawn', map, 'Player Spawn');
+ 
+        //we know there is just one result
+        squirrel = game.add.sprite(result[0].x, result[0].y, 'squirrel');
+        game.physics.arcade.enable(squirrel);
+ 
+        //the camera will follow the player in the world
+        game.camera.follow(squirrel);
+ 
+        //move player with cursor keys
+        cursors = game.input.keyboard.createCursorKeys();
+        
+        
+        
     }
     
     function update() {
-        // Accelerate the 'logo' sprite towards the cursor,
-        // accelerating at 500 pixels/second and moving no faster than 500 pixels/second
-        // in X or Y.
-        // This function returns the rotation angle that makes it visually match its
-        // new trajectory.
-        bouncy.rotation = game.physics.arcade.accelerateToPointer( bouncy, this.game.input.activePointer, 500, 500, 500 );
+        
     }
+    
+     function createTrees() {
+    //create items
+    trees = game.add.group();
+    trees.enableBody = true;
+    var tree;    
+    var result = findObjectsByType('tree', map, 'Trees');
+    result.forEach(function(element){
+      createFromTiledObject(element, trees);
+    }, this);
+  }
+    
+    function createSnowyTrees() {
+    //create items
+    snowyTrees = game.add.group();
+    snowyTrees.enableBody = true;
+    var snowytree;    
+    var result = findObjectsByType('snowyTree', map, 'SnowyTrees');
+    result.forEach(function(element){
+      createFromTiledObject(element, snowyTrees);
+    }, this);
+  }
+    
+    function createAcorns() {
+    //create items
+    acorns = game.add.group();
+    acorns.enableBody = true;
+    var acorn;    
+    var result = findObjectsByType('acorn', map, 'Acorn');
+    result.forEach(function(element){
+      createFromTiledObject(element, acorns);
+    }, this);
+  }
+    
+    
+    
+    
+    //From https://gamedevacademy.org/html5-phaser-tutorial-top-down-games-with-tiled/
+    function findObjectsByType(type, map, layer){
+        var results = new Array();
+        map.objects[layer].forEach(function(element){
+            
+            
+            if(element.properties.type === type){
+                
+                element.y -= map.tileHeight;
+                results.push(element);
+            }
+        });
+        
+        return results;
+        
+        
+    }
+    
+    //create a sprite from an object
+  function createFromTiledObject(element, group) {
+    var sprite = group.create(element.x, element.y, element.properties.sprite);
+ 
+      //copy all properties to the sprite
+      Object.keys(element.properties).forEach(function(key){
+        sprite[key] = element.properties[key];
+      });
+  }
+    
 };
