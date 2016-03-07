@@ -28,6 +28,10 @@ window.onload = function() {
         game.load.image('treeSprite', 'assets/sprites/tree32x32.png');
         game.load.image('snowyTreeSprite', 'assets/sprites/snowytree32x32.png');
         game.load.image('acornSprite', 'assets/sprites/acorn32x32.png');
+        
+            //The spawn and exits as well!
+        game.load.image('spawnSprite', 'assets/sprites/spawn32x32.png');
+        game.load.image('exitSprite', 'assets/sprites/exit32x32.png');
 
         
         //Music loading
@@ -48,15 +52,20 @@ window.onload = function() {
     var trees;
     var snowyTrees;
     var acorns;
+    
+    //Spawn will have only one member of the group.
     var spawn;
     var exit;
     
     //Squirrel, the Player
     var squirrel;
-    
-    //Music
+    var squirrelFacing;
+    //Speed of the squirrel.
+    var PLAYERSPEED = 100;
+
+    //Background Music
     var music;
-    //SFX
+    //Squirrel cheep; plays when the squirrel collects an acorn.
     var cheep;
     
     //Controls
@@ -65,7 +74,7 @@ window.onload = function() {
 
     function create() {
         
-        //Physics!
+        //PHYSICS!
         game.physics.startSystem(Phaser.Physics.ARCADE);
         
      
@@ -74,15 +83,14 @@ window.onload = function() {
         map = game.add.tilemap('map');
         map.addTilesetImage('SquirrelTileset', 'tileset');
         
+         //Collision physics setup. Basically, only the 
+        // tree objects and the acorn objects will be collidable.
+        map.setCollision([1,4,5]);
+        
         //Layers! Non objective.
         grassLayer = map.createLayer('Grass');
         snowyGrassLayer = map.createLayer('SnowyGrass');
         
-        
-        //Collision!
-//        map.setCollisionBetween(1,4000,true,'treeLayer');
-//        map.setCollisionBetween(1,4000,true,'snowyTreeLayer');
-//        
         //resizes the game world to match the layer dimensions
         grassLayer.resizeWorld();
         snowyGrassLayer.resizeWorld();
@@ -94,10 +102,17 @@ window.onload = function() {
         
         //Squirrel Setup
         //create player
-        var result = findObjectsByType('spawn', map, 'Player Spawn');
+        createPlayer();
+        
+        //ANIMATIONS! Just one, actually.
+        squirrel.animations.add('run', [0,1,2,3,4,5,6,7,8], 10, true);
+        
+        squirrel.anchor.x = 0.5;
+        squirrel.anchor.y = 0.5;
+    
  
         //we know there is just one result
-        squirrel = game.add.sprite(result[0].x, result[0].y, 'squirrel');
+        
         game.physics.arcade.enable(squirrel);
  
         //the camera will follow the player in the world
@@ -107,10 +122,29 @@ window.onload = function() {
         cursors = game.input.keyboard.createCursorKeys();
         
         
+       
+        
+        
+        //Start the music!
+        
+        music = game.add.audio('music');
+        music.play();
+        
+        
+        
+        
         
     }
     
     function update() {
+        
+        //Collision checking - with trees and snowyTrees!
+        game.physics.arcade.collide(squirrel, trees);
+        game.physics.arcade.collide(squirrel, snowyTrees);
+
+        //Player controls - move when cursor keys pressed and such.
+        playerControl();
+        
         
     }
     
@@ -118,64 +152,97 @@ window.onload = function() {
     //create items
     trees = game.add.group();
     trees.enableBody = true;
-    var tree;    
-    var result = findObjectsByType('tree', map, 'Trees');
-    result.forEach(function(element){
-      createFromTiledObject(element, trees);
-    }, this);
+    map.createFromObjects('Trees',5,'treeSprite', trees);
+    
   }
     
     function createSnowyTrees() {
     //create items
     snowyTrees = game.add.group();
     snowyTrees.enableBody = true;
-    var snowytree;    
-    var result = findObjectsByType('snowyTree', map, 'SnowyTrees');
-    result.forEach(function(element){
-      createFromTiledObject(element, snowyTrees);
-    }, this);
+    map.createFromObjects('SnowyTrees', 4, 'snowyTreeSprite', snowyTrees);
+        
+    
+    
   }
     
     function createAcorns() {
     //create items
     acorns = game.add.group();
     acorns.enableBody = true;
-    var acorn;    
-    var result = findObjectsByType('acorn', map, 'Acorn');
-    result.forEach(function(element){
-      createFromTiledObject(element, acorns);
-    }, this);
+    map.createFromObjects('Acorn',1,'acornSprite', acorns);
+
+    
   }
     
-    
-    
-    
-    //From https://gamedevacademy.org/html5-phaser-tutorial-top-down-games-with-tiled/
-    function findObjectsByType(type, map, layer){
-        var results = new Array();
-        map.objects[layer].forEach(function(element){
-            
-            
-            if(element.properties.type === type){
-                
-                element.y -= map.tileHeight;
-                results.push(element);
-            }
-        });
+    function createPlayer(){
+        //Set up the spawn point.
+        spawn = game.add.group();
+        map.createFromObjects('Player Spawn',6,'spawnSprite', spawn);
+        //Put the squirrel at the spawn point.
+        squirrel = game.add.sprite(64, 32, 'squirrel');
         
-        return results;
+        squirrel.enableBody = true;
         
         
     }
     
-    //create a sprite from an object
-  function createFromTiledObject(element, group) {
-    var sprite = group.create(element.x, element.y, element.properties.sprite);
- 
-      //copy all properties to the sprite
-      Object.keys(element.properties).forEach(function(key){
-        sprite[key] = element.properties[key];
-      });
-  }
+    
+    function playerControl(){
+        squirrel.body.velocity.x = 0;
+        squirrel.body.velocity.y = 0;
+        
+        
+        //Left
+        if(cursors.left.isDown){
+            squirrel.body.velocity.x = (-1)*PLAYERSPEED;
+            squirrel.rotation = (3.14)/2;
+            squirrel.animations.play('run');
+            
+        }
+            
+            //Right
+            
+        else if(cursors.right.isDown){
+            
+            squirrel.body.velocity.x = PLAYERSPEED;
+            squirrel.rotation = (3*3.14)/2;
+            squirrel.animations.play('run');
+            
+        }
+            //Up
+        
+        else if(cursors.up.isDown){
+            squirrel.body.velocity.y = (-1)*PLAYERSPEED;
+            squirrel.rotation = (3.14);
+            squirrel.animations.play('run');
+            
+            
+        }
+            
+            //Down
+        else if(cursors.down.isDown){
+            squirrel.body.velocity.y = PLAYERSPEED;
+            squirrel.rotation = 0;
+            squirrel.animations.play('run');
+             
+        }
+        
+        //Idle
+        else{
+            
+            squirrel.animations.stop();
+            squirrel.frame = 0;
+            
+        }
+        
+        
+    }
+    
+    
+    
+   
+    
+  
     
 };
